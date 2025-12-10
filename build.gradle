@@ -1,5 +1,26 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.android.library) apply false
+    id 'maven-publish'
+}
+
+// 核心任务：将本地 AAR 作为 Maven 构件发布
+publishing {
+    publications {
+        release(MavenPublication) {
+            // 1. 引入本地 AAR 文件
+            artifact file('libs/xrtc-5.0.0.aar')
+
+            // 2. 配置 Maven 坐标（必须与 GitHub/Tag 匹配）
+            groupId = 'com.github.faithXiao' // 你的 GitHub 用户名
+            artifactId = 'xrtc' // 你的 GitHub 仓库名
+            version = '3.0.0' // 与 Tag 版本一致
+
+            // 3. 生成 pom.xml（关键：声明 AAR 的依赖，若有则补充）
+            pom {
+                name = 'xrtc'
+                description = 'XRTC AAR Package'
+                url = 'https://github.com/faithXiao/xrtc'
+            }
+        }
+    }
 }
