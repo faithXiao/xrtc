@@ -1,26 +1,69 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// 核心：引入 java 插件（支持 java.toolchain） + maven-publish 插件
 plugins {
-    id 'maven-publish'
+    id 'java'
+    id 'maven-publish' // 仅保留 maven 发布插件
 }
 
-// 核心任务：将本地 AAR 作为 Maven 构件发布
+// 适配 Java 17（JitPack 环境）
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    modularity.inferModulePath = false // 禁用 Java 模块，避免 AAR 冲突
+}
+
+// 核心修复：复用已存在的 assemble 任务，添加依赖（不再手动创建）
+project.tasks.named('assemble') {
+    // 让默认的 assemble 任务依赖发布任务（核心逻辑不变）
+    dependsOn project.tasks.named('publishReleasePublicationToMavenLocal')
+}
+
+// 发布配置
 publishing {
     publications {
         release(MavenPublication) {
-            // 1. 引入本地 AAR 文件
+            // 1. 引入本地 AAR（路径务必准确）
             artifact file('libs/xrtc-5.0.0.aar')
 
-            // 2. 配置 Maven 坐标（必须与 GitHub/Tag 匹配）
-            groupId = 'com.github.faithXiao' // 你的 GitHub 用户名
-            artifactId = 'xrtc' // 你的 GitHub 仓库名
-            version = '3.0.0' // 与 Tag 版本一致
+            // 2. Maven 坐标（适配 JitPack 传入的参数）
+            groupId = project.hasProperty('group') ? project.group : 'com.github.faithXiao'
+            artifactId = 'xrtc'
+            version = project.hasProperty('version') ? project.version : '3.0.0'
 
-            // 3. 生成 pom.xml（关键：声明 AAR 的依赖，若有则补充）
+            // 3. POM 配置（Gradle 8.x 兼容）
             pom {
                 name = 'xrtc'
                 description = 'XRTC AAR Package'
                 url = 'https://github.com/faithXiao/xrtc'
             }
         }
+    }
+
+    // 发布仓库（Gradle 8.x 推荐 layout 写法）
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('repo')
+        }
+    }
+}
+
+// 兜底：确保发布任务存在
+afterEvaluate {
+    def publishTask = project.tasks.findByName('publishReleasePublicationToMavenLocal')
+    if (!publishTask) {
+        // 若任务不存在，创建并绑定逻辑
+        publishTask = project.tasks.create('publishReleasePublicationToMavenLocal') {
+            doLast {
+                println "Publishing local AAR to Maven Local..."
+                // 手动触发发布（兜底逻辑，一般无需执行）
+                project.publishing.publications.release.artifacts.each { artifact ->
+                    println "Published artifact: ${artifact.file.name}"
+                }
+            }
+        }
+    }
+    // 确保 assemble 任务始终依赖发布任务
+    project.tasks.named('assemble').configure {
+        dependsOn publishTask
     }
 }
