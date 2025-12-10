@@ -11,6 +11,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/xrtc" />
+            <option value="$PROJECT_DIR$/xrtc-aar" />
           </set>
         </option>
       </GradleProjectSettings>
